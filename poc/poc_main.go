@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
@@ -22,6 +24,17 @@ func main() {
 		return
 	}
 	defer cancel()
+
+	//image build
+	tag := "build-test-tag:v0.1"
+	dockerfile := fmt.Sprint(`FROM busybox 
+CMD ["echo", "build-test-echo"]
+`)
+	buildCtx, err := createBuildContext(dockerfile)
+	if err == nil {
+		BuildImage(ctx, client, gopts, tag, buildCtx)
+	}
+	return
 
 	//container list
 	GetContainerList(ctx, client, gopts)
@@ -60,6 +73,7 @@ func main() {
 			PrintImages(images)
 		}
 	}
+
 }
 
 func getGlobalOption(ns string) types.GlobalCommandOptions {
@@ -90,4 +104,15 @@ func getGlobalOption(ns string) types.GlobalCommandOptions {
 		HostsDir:         hostsDir,
 		Experimental:     experimental,
 	}
+}
+
+func createBuildContext(dockerfile string) (string, error) {
+	tmpDir, err := os.MkdirTemp("", "nerdctl-build-test")
+	if err != nil {
+		return "", err
+	}
+	if err = os.WriteFile(filepath.Join(tmpDir, "Dockerfile"), []byte(dockerfile), 0644); err != nil {
+		return "", err
+	}
+	return tmpDir, nil
 }
